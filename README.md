@@ -1,6 +1,14 @@
 # Intune-Misc
 
-A grab-bag of standalone PowerShell scripts for Intune/Entra administration and remediation. Each script is self-contained (own `.SYNOPSIS`/`.DESCRIPTION`/`.EXAMPLE` help) and not part of a shared module - run with `Get-Help .\Scripts\<name>.ps1 -Full` for details.
+A grab-bag of standalone PowerShell scripts and remediation packages for Intune/Entra administration. Each script is self-contained (own `.SYNOPSIS`/`.DESCRIPTION`/`.EXAMPLE` help) and not part of a shared module - run with `Get-Help .\Scripts\<name>.ps1 -Full` for details.
+
+## Repository layout
+
+| Folder | Contents |
+| --- | --- |
+| [Scripts/](Scripts/) | Standalone admin scripts, run manually against a tenant |
+| [Remediations/](Remediations/) | Intune Proactive Remediation packages (detection + remediation scripts, optionally a Win32 app variant), one folder per remediation with its own README |
+| [Apps/](Apps/) | Win32 app packaging artifacts (currently only a placeholder `dummy.intunewin`) |
 
 ## Scripts
 
@@ -22,7 +30,14 @@ Bulk-reassigns Apple ADE (ABM/ASM) devices from an enrollment program token to a
 
 Requires: PowerShell 7.2+, `Microsoft.Graph.Authentication` module, `DeviceManagementServiceConfig.ReadWrite.All` scope.
 
+## Remediations
+
+### [Set-AutoAcceptSsoPermission](Remediations/Set-AutoAcceptSsoPermission/README.md)
+
+Deploys the `AutoAcceptSsoPermission` registry policy that auto-accepts the Entra SSO permission prompt ("Continue to sign in") on managed Windows devices, so users no longer see the consent dialog when Windows shares their signed-in work account with Microsoft apps. Ships both a Proactive Remediation pair (`detection.ps1`/`remediation.ps1`) and a Win32 app variant (`Win32App/` with install/uninstall/detect scripts) - see the folder README for prerequisites (Windows 11 24H2/25H2 with KB5101650+) and deployment steps.
+
 ## Usage notes
 
 - These are ad-hoc/remediation scripts, not a maintained toolset - review the parameters and use `-WhatIf` (where supported) before running against production tenants.
 - No shared dependencies between scripts; each can be copied and run individually.
+- Remediation packages under `Remediations/` are meant to be deployed via Intune (Proactive Remediations or Win32 apps), not run interactively - each folder's README documents the deployment settings.

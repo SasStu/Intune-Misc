@@ -1,0 +1,10 @@
+{
+  "network.http.http3.enable": {
+    "Value": false,
+    "Status": "locked"
+  },
+  "network.dns.native_https_query": {
+    "Value": false,
+    "Status": "locked"
+  }
+}

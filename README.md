@@ -39,7 +39,7 @@ Deploys the `AutoAcceptSsoPermission` registry policy that auto-accepts the Entr
 
 ### [Set-GlobalSecureAccessClientSettings](Remediations/Set-GlobalSecureAccessClientSettings/README.md)
 
-Applies the Global Secure Access **client-side** controls with no native Intune UI: HKLM hardening of the GSA client (`RestrictNonPrivilegedUsers`, hide tray Disable / Sign out / Disable Private Access) plus a Windows Firewall rule blocking outbound QUIC (UDP 443) so traffic falls back to TCP 443 for Entra Internet Access inspection. The `detection.ps1` / `install.ps1` / `uninstall.ps1` trio deploys as a Remediation script pair or a Win32 app. Browser-side settings live under [ConfigurationProfiles/GlobalSecureAccess/](ConfigurationProfiles/GlobalSecureAccess/).
+Applies the Global Secure Access **client-side** controls with no native Intune UI: HKLM hardening of the GSA client (`RestrictNonPrivilegedUsers`, hide tray Disable / Sign out / Disable Private Access). The `detection.ps1` / `install.ps1` / `uninstall.ps1` trio deploys as a Remediation script pair or a Win32 app. Browser-side settings (QUIC + DoH off) live under [ConfigurationProfiles/GlobalSecureAccess/](ConfigurationProfiles/GlobalSecureAccess/).
 
 ## Configuration Profiles
 

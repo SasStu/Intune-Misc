@@ -30,16 +30,6 @@ $RegValues = [ordered]@{
     HideSignOutButton              = 1   # hide tray "Sign out"
     HideDisablePrivateAccessButton = 1   # hide tray "Disable Private Access" (no-op without Private Access license)
 }
-
-# Windows Firewall rule that forces QUIC/HTTP3 to fall back to TCP 443 so
-# Entra Internet Access can inspect it for web content filtering.
-$QuicRuleEnabled = $true
-$QuicRuleName    = 'GSA - Block QUIC (UDP 443 Outbound)'
-$QuicRuleAction  = 'Block'
-$QuicRuleDir     = 'Outbound'
-$QuicRuleProto   = 'UDP'
-$QuicRulePort    = 443
-# (install.ps1 also defines $QuicRuleGroup + $QuicRuleDesc here.)
 # ======================================================================
 # END CONFIG
 # ======================================================================
@@ -61,30 +51,6 @@ else {
             $problems.Add("$($kv.Key) is $actual (expected $($kv.Value))")
         }
     }
-}
-
-# --- QUIC firewall rule ---------------------------------------------------
-$rules = Get-NetFirewallRule -DisplayName $QuicRuleName -ErrorAction SilentlyContinue
-if ($QuicRuleEnabled) {
-    if (-not $rules) {
-        $problems.Add("Firewall rule '$QuicRuleName' missing")
-    }
-    else {
-        foreach ($r in $rules) {
-            $pf = $r | Get-NetFirewallPortFilter -ErrorAction SilentlyContinue
-            if ($r.Enabled -ne 'True' -or
-                $r.Action -ne $QuicRuleAction -or
-                $r.Direction -ne $QuicRuleDir -or
-                -not $pf -or $pf.Protocol -ne $QuicRuleProto -or
-                "$($pf.RemotePort)" -ne "$QuicRulePort") {
-                $problems.Add("Firewall rule '$QuicRuleName' drifted")
-                break
-            }
-        }
-    }
-}
-elseif ($rules) {
-    $problems.Add("Firewall rule '$QuicRuleName' present but disabled in config")
 }
 
 # --- Result ---------------------------------------------------------------

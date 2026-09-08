@@ -12,7 +12,6 @@
 
     Applies:
       - HKLM registry hardening for the Global Secure Access client
-      - Windows Firewall rule blocking outbound QUIC (UDP 443)
 
     Full detail goes to a log file in the Intune Management Extension log
     folder (picked up by IME log collection / device diagnostics); stdout is a
@@ -34,15 +33,6 @@ $RegValues = [ordered]@{
     HideSignOutButton              = 1
     HideDisablePrivateAccessButton = 1
 }
-
-$QuicRuleEnabled = $true
-$QuicRuleName    = 'GSA - Block QUIC (UDP 443 Outbound)'
-$QuicRuleAction  = 'Block'
-$QuicRuleDir     = 'Outbound'
-$QuicRuleProto   = 'UDP'
-$QuicRulePort    = 443
-$QuicRuleGroup   = 'Global Secure Access'
-$QuicRuleDesc    = 'Blocks outbound QUIC so traffic falls back to TCP 443 for Entra Internet Access inspection.'
 # ======================================================================
 # END CONFIG
 # ======================================================================
@@ -84,25 +74,6 @@ try {
         New-ItemProperty -Path $RegPath -Name $kv.Key -PropertyType DWord -Value $kv.Value -Force | Out-Null
         Write-Log "Set $($kv.Key) = $($kv.Value) (was '$current')"
         $changes.Add("$($kv.Key)=$($kv.Value)")
-    }
-
-    # --- QUIC firewall rule ---------------------------------------------------
-    $existing = Get-NetFirewallRule -DisplayName $QuicRuleName -ErrorAction SilentlyContinue
-    if ($QuicRuleEnabled) {
-        if ($existing) {
-            $existing | Remove-NetFirewallRule
-            Write-Log "Removed $($existing.Count) stale rule(s) '$QuicRuleName' before recreate"
-        }
-        New-NetFirewallRule -DisplayName $QuicRuleName -Group $QuicRuleGroup -Description $QuicRuleDesc `
-            -Direction $QuicRuleDir -Action $QuicRuleAction -Protocol $QuicRuleProto -RemotePort $QuicRulePort `
-            -Profile Any -Enabled True | Out-Null
-        Write-Log "Created firewall rule '$QuicRuleName' ($QuicRuleAction $QuicRuleDir $QuicRuleProto/$QuicRulePort)"
-        $changes.Add('firewall rule set')
-    }
-    elseif ($existing) {
-        $existing | Remove-NetFirewallRule
-        Write-Log "Config disabled - removed rule '$QuicRuleName'"
-        $changes.Add('firewall rule removed')
     }
 
     Write-Log "=== install.ps1 completed OK ==="

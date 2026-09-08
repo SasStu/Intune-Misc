@@ -16,7 +16,6 @@ Browser-side settings that let GSA capture Edge / Chrome / Firefox traffic
 | `HideDisableButton` | same | `1` | Removes the tray **Disable** action. |
 | `HideSignOutButton` | same | `1` | Removes the tray **Sign out** action. |
 | `HideDisablePrivateAccessButton` | same | `1` | Removes **Disable Private Access** (no-op without Private Access license). |
-| `GSA - Block QUIC (UDP 443 Outbound)` | Windows Firewall | Block | Forces QUIC/HTTP3 to fall back to TCP 443 so Entra Internet Access can filter it. |
 
 All registry values are `REG_DWORD`.
 
@@ -29,8 +28,7 @@ All registry values are `REG_DWORD`.
 | `uninstall.ps1` | Revert (Win32 uninstall command, or one-off rollback). |
 
 The `CONFIG` banner block at the top of `detection.ps1` and `install.ps1` **must be
-kept in sync** - edit values in both. They're identical except `install.ps1`
-also defines `$QuicRuleGroup` / `$QuicRuleDesc` (cosmetic firewall metadata).
+kept in sync** - edit values in both.
 
 Device logs: `%ProgramData%\Microsoft\IntuneManagementExtension\Logs\GSAClientSettings-install.log`
 and `GSAClientSettings-uninstall.log` - written next to the IME logs so they are
@@ -77,7 +75,6 @@ need to roll back.)
 ```powershell
 Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Global Secure Access Client' |
     Select RestrictNonPrivilegedUsers, HideDisableButton, HideSignOutButton, HideDisablePrivateAccessButton
-Get-NetFirewallRule -DisplayName 'GSA - Block QUIC (UDP 443 Outbound)' | Get-NetFirewallPortFilter
 ```
 
 Restart the GSA client (or reboot) for the tray-menu changes to show.

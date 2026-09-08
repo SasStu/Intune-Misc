@@ -10,7 +10,6 @@
     Reverts what install.ps1 applied:
       - RestrictNonPrivilegedUsers / HideDisableButton -> 0
       - HideSignOutButton / HideDisablePrivateAccessButton -> removed
-      - QUIC firewall rule -> removed
 
     Does NOT delete the "Global Secure Access Client" key (client installer owns it).
     Run elevated / 64-bit.
@@ -21,7 +20,6 @@
 #>
 
 $RegPath      = 'HKLM:\SOFTWARE\Microsoft\Global Secure Access Client'
-$QuicRuleName = 'GSA - Block QUIC (UDP 443 Outbound)'
 $resetToZero  = @('RestrictNonPrivilegedUsers', 'HideDisableButton')
 $removeValues = @('HideSignOutButton', 'HideDisablePrivateAccessButton')
 
@@ -54,12 +52,6 @@ try {
     }
     else {
         Write-Log "Registry path $RegPath not present - skipped"
-    }
-
-    $rules = Get-NetFirewallRule -DisplayName $QuicRuleName -ErrorAction SilentlyContinue
-    if ($rules) {
-        $rules | Remove-NetFirewallRule
-        Write-Log "Removed firewall rule '$QuicRuleName'"
     }
 
     Write-Log "=== uninstall.ps1 completed OK ==="

@@ -1,0 +1,22 @@
+{
+  "network.http.http3.enable": {
+    "Value": false,
+    "Status": "locked"
+  },
+  "network.http.http3.enable_kyber": {
+    "Value": false,
+    "Status": "locked"
+  },
+  "network.trr.mode": {
+    "Value": 5,
+    "Status": "locked"
+  },
+  "network.trr.uri": {
+    "Value": "",
+    "Status": "locked"
+  },
+  "network.dns.native_https_query": {
+    "Value": false,
+    "Status": "locked"
+  }
+}

@@ -8,6 +8,7 @@ A grab-bag of standalone PowerShell scripts and remediation packages for Intune/
 | --- | --- |
 | [Scripts/](Scripts/) | Standalone admin scripts, run manually against a tenant |
 | [Remediations/](Remediations/) | Intune Proactive Remediation packages (detection + remediation scripts, optionally a Win32 app variant), one folder per remediation with its own README |
+| [ConfigurationProfiles/](ConfigurationProfiles/) | Exported Intune configuration/Settings Catalog profiles and browser policy JSON, grouped by feature area, each with its own README |
 | [Apps/](Apps/) | Win32 app packaging artifacts (currently only a placeholder `dummy.intunewin`) |
 
 ## Scripts
@@ -35,6 +36,16 @@ Requires: PowerShell 7.2+, `Microsoft.Graph.Authentication` module, `DeviceManag
 ### [Set-AutoAcceptSsoPermission](Remediations/Set-AutoAcceptSsoPermission/README.md)
 
 Deploys the `AutoAcceptSsoPermission` registry policy that auto-accepts the Entra SSO permission prompt ("Continue to sign in") on managed Windows devices, so users no longer see the consent dialog when Windows shares their signed-in work account with Microsoft apps. Ships both a Proactive Remediation pair (`detection.ps1`/`remediation.ps1`) and a Win32 app variant (`Win32App/` with install/uninstall/detect scripts) - see the folder README for prerequisites (Windows 11 24H2/25H2 with KB5101650+) and deployment steps.
+
+### [Set-GlobalSecureAccessClientSettings](Remediations/Set-GlobalSecureAccessClientSettings/README.md)
+
+Applies the Global Secure Access **client-side** controls with no native Intune UI: HKLM hardening of the GSA client (`RestrictNonPrivilegedUsers`, hide tray Disable / Sign out / Disable Private Access) plus a Windows Firewall rule blocking outbound QUIC (UDP 443) so traffic falls back to TCP 443 for Entra Internet Access inspection. The `detection.ps1` / `install.ps1` / `uninstall.ps1` trio deploys as a Remediation script pair or a Win32 app. Browser-side settings live under [ConfigurationProfiles/GlobalSecureAccess/](ConfigurationProfiles/GlobalSecureAccess/).
+
+## Configuration Profiles
+
+### [GlobalSecureAccess/](ConfigurationProfiles/GlobalSecureAccess/)
+
+Browser policy so the GSA client can capture all web traffic: disables QUIC (HTTP/3 over UDP 443) and DNS over HTTPS, which Entra Internet Access can't inspect. `EdgeChrome/` is a Settings Catalog profile export (Edge + Chrome, 4 settings); `Firefox/` needs its own policy - shipped both as an ADMX preferences paste and a `policies.json` drop-in. Each folder README covers import and verification.
 
 ## Usage notes
 

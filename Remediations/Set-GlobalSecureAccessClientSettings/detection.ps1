@@ -46,19 +46,23 @@ $IPv4RegValue = 0x20   # prefer IPv4 over IPv6
 $problems = New-Object System.Collections.Generic.List[string]
 
 # --- Registry ---------------------------------------------------------
-if (-not (Test-Path $RegPath)) {
+# A missing key is reported, but the values are still enumerated so the status
+# line names every setting that is not in place. Reporting only "path missing"
+# reads as though nothing else was checked.
+$regPathExists = Test-Path $RegPath
+if (-not $regPathExists) {
     $problems.Add("Registry path missing: $RegPath")
 }
-else {
-    foreach ($kv in $RegValues.GetEnumerator()) {
-        $actual = $null
+foreach ($kv in $RegValues.GetEnumerator()) {
+    $actual = $null
+    if ($regPathExists) {
         try { $actual = (Get-ItemProperty -Path $RegPath -Name $kv.Key -ErrorAction Stop).$($kv.Key) } catch { }
-        if ($null -eq $actual) {
-            $problems.Add("$($kv.Key) not set (expected $($kv.Value))")
-        }
-        elseif ([int]$actual -ne [int]$kv.Value) {
-            $problems.Add("$($kv.Key) is $actual (expected $($kv.Value))")
-        }
+    }
+    if ($null -eq $actual) {
+        $problems.Add("$($kv.Key) not set (expected $($kv.Value))")
+    }
+    elseif ([int]$actual -ne [int]$kv.Value) {
+        $problems.Add("$($kv.Key) is $actual (expected $($kv.Value))")
     }
 }
 

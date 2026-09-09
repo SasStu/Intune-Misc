@@ -20,7 +20,7 @@ Browser-side settings that let GSA capture Edge / Chrome / Firefox traffic
 
 All registry values are `REG_DWORD`.
 
-### About `DisabledComponents`
+## About `DisabledComponents`
 
 Microsoft calls this the `IPv4Preferred` key and sets it in the
 [PowerShell script that packages the client](https://learn.microsoft.com/entra/global-secure-access/how-to-install-windows-client#package-the-client).
@@ -42,9 +42,26 @@ IPv6 configuration alone entirely.
 
 | File | Role |
 | --- | --- |
-| `detection.ps1` | Detection. `exit 0` = compliant, `exit 1` = apply. Prints one status line. |
-| `install.ps1` | Apply / remediate. Idempotent. Detail -> log file, one summary line to stdout. |
+| `detection.ps1` | Detection. `exit 0` = compliant, `exit 1` = apply. Prints one status line naming every setting that is out of place. |
+| `install.ps1` | Apply / remediate. Idempotent. `exit 0`, or `3010` when the IPv4 preference was just written. Detail -> log file, one summary line to stdout. |
 | `uninstall.ps1` | Revert (Win32 uninstall command, or one-off rollback). |
+
+### `install.ps1` exit codes
+
+| Code | When |
+| --- | --- |
+| `0` | Already compliant, or changes applied with nothing outstanding. |
+| `3010` | Applied, and the IPv4 preference needs a reboot to take effect. |
+| `1603` | Fatal error. |
+
+`3010` is what a **Win32 app** wants: Intune's default return-code table maps it
+to **Soft reboot**, so the app still counts as installed and the restart is left
+to the app's **Device restart behavior** - set that to **Determine behavior
+based on return codes**, or the `3010` has nothing to act on.
+
+As an **Intune Remediation**, any non-zero exit is filed as a *failed*
+remediation. Set `$SoftRebootExitCode = 0` near the top of `install.ps1` for
+that delivery model.
 
 The `CONFIG` banner block at the top of `detection.ps1` and `install.ps1` **must be
 kept in sync** - edit values in both.
@@ -74,6 +91,10 @@ line - keep it that way if you extend them.
 | Enforce script signature check | No |
 | Run script in 64-bit PowerShell | **Yes** |
 
+Set `$SoftRebootExitCode = 0` in `install.ps1` first - see the exit-code table
+above. Left at `3010`, the first run of every device is reported as a failed
+remediation even though it worked.
+
 **Assignments** - target a device group. Schedule **Daily**.
 (`uninstall.ps1` is not used here - run it as a one-off Platform script if you
 need to roll back.)
@@ -84,10 +105,17 @@ need to roll back.)
 
 | Field | Value |
 | --- | --- |
-| Install command | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1` |
-| Uninstall command | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File uninstall.ps1` |
+| Install | **PowerShell script** - upload `install.ps1` |
+| Uninstall | **PowerShell script** - upload `uninstall.ps1` |
 | Detection rule | custom script `detection.ps1` (32-bit: **No**) |
 | Install behavior | System |
+| Device restart behavior | **Determine behavior based on return codes** |
+| Return codes | leave the defaults (`3010` is already mapped to Soft reboot) |
+
+The **PowerShell script** installer option avoids the 32-bit trap that a
+`powershell.exe -File ...` command line walks into. Note the portal greys the
+option out until the install command line contains something, so type a
+character there first, then switch.
 
 ## Verify on a client
 

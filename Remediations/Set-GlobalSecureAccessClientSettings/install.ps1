@@ -19,13 +19,17 @@
     single summary line (Intune keeps only ~2048 chars of stdout).
 
     Exit codes:
-      0     success (including "applied, reboot pending" - see note)
+      0     success, nothing outstanding
+      3010  success, soft reboot required (the IPv4 preference was just written)
       1603  fatal error
 
-    Note: this script always exits 0 on success, never 3010. It doubles as an
-    Intune Remediation remediation script, where any non-zero exit is recorded
-    as a failed remediation. The IPv4 preference simply takes effect on the
-    next reboot; the summary line says so when it has just been written.
+    3010 is what a Win32 app wants: the default Intune return-code table maps it
+    to "Soft reboot", so the app still counts as installed and the restart is
+    handled by the app's device restart behavior. Set that to "Determine
+    behavior based on return codes" or the 3010 has nothing to act on.
+
+    As an Intune Remediation, any non-zero exit is filed as a FAILED
+    remediation. Set $SoftRebootExitCode to 0 below for that delivery model.
 #>
 
 # ======================================================================
@@ -48,6 +52,13 @@ $IPv4RegValue = 0x20   # prefer IPv4 over IPv6
 # ======================================================================
 # END CONFIG
 # ======================================================================
+
+# install.ps1 only - not mirrored in detection.ps1.
+# Exit code used when the IPv4 preference was just written and the reboot that
+# activates it is still outstanding.
+#   3010 -> Win32 app: "soft reboot", still a successful install.
+#   0    -> Intune Remediation: anything non-zero counts as a failed remediation.
+$SoftRebootExitCode = 3010
 
 # Log into the Intune Management Extension log folder so the detail is collected
 # with IME logs (Intune "Collect diagnostics" / support bundles). Falls back to
@@ -114,16 +125,18 @@ try {
         }
     }
 
-    Write-Log "=== install.ps1 completed OK ==="
     if ($changes.Count -eq 0) {
+        Write-Log "=== install.ps1 completed OK (no changes) ==="
         Write-Output 'GSA client settings already compliant - no changes.'
+        exit 0
     }
-    elseif ($rebootRequired) {
+    if ($rebootRequired) {
+        Write-Log "=== install.ps1 completed OK - exiting $SoftRebootExitCode (reboot outstanding) ==="
         Write-Output ("GSA client settings applied: " + ($changes -join ', ') + ". IPv4 preference applies after the next reboot. See $logFile")
+        exit $SoftRebootExitCode
     }
-    else {
-        Write-Output ("GSA client settings applied: " + ($changes -join ', ') + ". See $logFile")
-    }
+    Write-Log "=== install.ps1 completed OK ==="
+    Write-Output ("GSA client settings applied: " + ($changes -join ', ') + ". See $logFile")
     exit 0
 }
 catch {

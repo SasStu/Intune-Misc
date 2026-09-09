@@ -16,8 +16,27 @@ Browser-side settings that let GSA capture Edge / Chrome / Firefox traffic
 | `HideDisableButton` | same | `1` | Removes the tray **Disable** action. |
 | `HideSignOutButton` | same | `1` | Removes the tray **Sign out** action. |
 | `HideDisablePrivateAccessButton` | same | `1` | Removes **Disable Private Access** (no-op without Private Access license). |
+| `DisabledComponents` | `HKLM\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters` | `0x20` | "IPv4Preferred" - prefer IPv4 over IPv6. **Needs a reboot.** |
 
 All registry values are `REG_DWORD`.
+
+### About `DisabledComponents`
+
+Microsoft calls this the `IPv4Preferred` key and sets it in the
+[PowerShell script that packages the client](https://learn.microsoft.com/entra/global-secure-access/how-to-install-windows-client#package-the-client).
+Two things follow from that:
+
+- **It is only set if you deploy the client Microsoft's way.** Package it with
+  PatchMyPC, the Enterprise App Catalog or your own wrapped `.exe` and nothing
+  writes it - which is why it is in this script package instead.
+- **It is not a GSA key.** `DisabledComponents` is the Windows IPv6 prefix
+  policy value and it is a bitmask covering more than the IPv4 preference.
+  Writing `0x20` replaces whatever was there; `install.ps1` logs the previous
+  value first. `uninstall.ps1` removes the value only if it is still `0x20`, so
+  a value set for some other reason is left alone.
+
+Set `$IPv4RegValue = $null` in both `detection.ps1` and `install.ps1` to leave
+IPv6 configuration alone entirely.
 
 ## Files
 
@@ -75,12 +94,17 @@ need to roll back.)
 ```powershell
 Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Global Secure Access Client' |
     Select RestrictNonPrivilegedUsers, HideDisableButton, HideSignOutButton, HideDisablePrivateAccessButton
+
+Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters' |
+    Select DisabledComponents
 ```
 
-Restart the GSA client (or reboot) for the tray-menu changes to show.
+Restart the GSA client (or reboot) for the tray-menu changes to show. The IPv4
+preference needs a full reboot, and `netsh interface ipv6 show prefixpolicies`
+is the way to confirm it actually took.
 
 ## Not covered here
 
-- GSA client **installer** (`GlobalSecureAccessClient.exe /quiet`) + `IPv4Preferred` tweak - separate Win32 app.
+- GSA client **installer** (`GlobalSecureAccessClient.exe /quiet`) - separate Win32 app.
 - Edge / Chrome QUIC + DoH - see [`../../ConfigurationProfiles/GlobalSecureAccess/EdgeChrome/`](../../ConfigurationProfiles/GlobalSecureAccess/EdgeChrome/) (native Settings Catalog rows).
 - Firefox QUIC + DoH - see [`../../ConfigurationProfiles/GlobalSecureAccess/Firefox/`](../../ConfigurationProfiles/GlobalSecureAccess/Firefox/).

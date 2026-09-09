@@ -30,6 +30,15 @@ $RegValues = [ordered]@{
     HideSignOutButton              = 1   # hide tray "Sign out"
     HideDisablePrivateAccessButton = 1   # hide tray "Disable Private Access" (no-op without Private Access license)
 }
+
+# "IPv4Preferred" - Microsoft's own client packaging script sets this alongside
+# the installer. It is not under the GSA key: it is the Windows IPv6 prefix
+# policy value, and it only takes effect after a reboot.
+# https://learn.microsoft.com/entra/global-secure-access/how-to-install-windows-client#package-the-client
+# Set $IPv4RegValue to $null to skip this check entirely.
+$IPv4RegPath  = 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters'
+$IPv4RegName  = 'DisabledComponents'
+$IPv4RegValue = 0x20   # prefer IPv4 over IPv6
 # ======================================================================
 # END CONFIG
 # ======================================================================
@@ -50,6 +59,18 @@ else {
         elseif ([int]$actual -ne [int]$kv.Value) {
             $problems.Add("$($kv.Key) is $actual (expected $($kv.Value))")
         }
+    }
+}
+
+# --- IPv4 preferred ---------------------------------------------------
+if ($null -ne $IPv4RegValue) {
+    $ipv4Actual = $null
+    try { $ipv4Actual = (Get-ItemProperty -Path $IPv4RegPath -Name $IPv4RegName -ErrorAction Stop).$IPv4RegName } catch { }
+    if ($null -eq $ipv4Actual) {
+        $problems.Add("$IPv4RegName not set (expected $IPv4RegValue)")
+    }
+    elseif ([int]$ipv4Actual -ne [int]$IPv4RegValue) {
+        $problems.Add("$IPv4RegName is $ipv4Actual (expected $IPv4RegValue)")
     }
 }
 

@@ -10,6 +10,9 @@
     Reverts what install.ps1 applied:
       - RestrictNonPrivilegedUsers / HideDisableButton -> 0
       - HideSignOutButton / HideDisablePrivateAccessButton -> removed
+      - Tcpip6 DisabledComponents -> removed, but only if it is still 0x20,
+        so a value set for some other reason is left alone. Takes effect on
+        the next reboot.
 
     Does NOT delete the "Global Secure Access Client" key (client installer owns it).
     Run elevated / 64-bit.
@@ -22,6 +25,10 @@
 $RegPath      = 'HKLM:\SOFTWARE\Microsoft\Global Secure Access Client'
 $resetToZero  = @('RestrictNonPrivilegedUsers', 'HideDisableButton')
 $removeValues = @('HideSignOutButton', 'HideDisablePrivateAccessButton')
+
+$IPv4RegPath  = 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters'
+$IPv4RegName  = 'DisabledComponents'
+$IPv4RegValue = 0x20
 
 # Log alongside the IME logs so detail is collected with Intune diagnostics.
 $imeLogDir = Join-Path $env:ProgramData 'Microsoft\IntuneManagementExtension\Logs'
@@ -52,6 +59,20 @@ try {
     }
     else {
         Write-Log "Registry path $RegPath not present - skipped"
+    }
+
+    # Only remove the IPv4 preference if it still holds the value we wrote.
+    $ipv4Current = $null
+    try { $ipv4Current = (Get-ItemProperty -Path $IPv4RegPath -Name $IPv4RegName -ErrorAction Stop).$IPv4RegName } catch { }
+    if ($null -eq $ipv4Current) {
+        Write-Log "$IPv4RegName not present - skipped"
+    }
+    elseif ([int]$ipv4Current -eq [int]$IPv4RegValue) {
+        Remove-ItemProperty -Path $IPv4RegPath -Name $IPv4RegName -ErrorAction SilentlyContinue
+        Write-Log "Removed $IPv4RegName - reboot required to take effect"
+    }
+    else {
+        Write-Log "$IPv4RegName is $ipv4Current, not $IPv4RegValue - left alone"
     }
 
     Write-Log "=== uninstall.ps1 completed OK ==="

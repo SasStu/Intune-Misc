@@ -12,14 +12,20 @@
 
     Applies:
       - HKLM registry hardening for the Global Secure Access client
+      - "IPv4Preferred" (Tcpip6 DisabledComponents = 0x20) - needs a reboot
 
     Full detail goes to a log file in the Intune Management Extension log
     folder (picked up by IME log collection / device diagnostics); stdout is a
     single summary line (Intune keeps only ~2048 chars of stdout).
 
     Exit codes:
-      0     success
+      0     success (including "applied, reboot pending" - see note)
       1603  fatal error
+
+    Note: this script always exits 0 on success, never 3010. It doubles as an
+    Intune Remediation remediation script, where any non-zero exit is recorded
+    as a failed remediation. The IPv4 preference simply takes effect on the
+    next reboot; the summary line says so when it has just been written.
 #>
 
 # ======================================================================
@@ -33,6 +39,12 @@ $RegValues = [ordered]@{
     HideSignOutButton              = 1
     HideDisablePrivateAccessButton = 1
 }
+
+# "IPv4Preferred" - Windows IPv6 prefix policy, not a GSA key. Reboot to apply.
+# Set $IPv4RegValue to $null to skip.
+$IPv4RegPath  = 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters'
+$IPv4RegName  = 'DisabledComponents'
+$IPv4RegValue = 0x20   # prefer IPv4 over IPv6
 # ======================================================================
 # END CONFIG
 # ======================================================================
@@ -52,7 +64,8 @@ function Write-Log {
     } catch { }
 }
 
-$changes = New-Object System.Collections.Generic.List[string]
+$changes        = New-Object System.Collections.Generic.List[string]
+$rebootRequired = $false
 
 try {
     $ErrorActionPreference = 'Stop'
@@ -76,9 +89,37 @@ try {
         $changes.Add("$($kv.Key)=$($kv.Value)")
     }
 
+    # --- IPv4 preferred ---------------------------------------------------
+    # Microsoft's client packaging script sets this next to the installer. When
+    # the client is delivered another way (PatchMyPC, EAM, a plain wrapped exe)
+    # nothing sets it, so it belongs here.
+    if ($null -ne $IPv4RegValue) {
+        if (-not (Test-Path $IPv4RegPath)) {
+            New-Item -Path $IPv4RegPath -Force | Out-Null
+            Write-Log "Created $IPv4RegPath"
+        }
+        $ipv4Current = $null
+        try { $ipv4Current = (Get-ItemProperty -Path $IPv4RegPath -Name $IPv4RegName -ErrorAction Stop).$IPv4RegName } catch { }
+        if ($null -ne $ipv4Current -and [int]$ipv4Current -eq [int]$IPv4RegValue) {
+            Write-Log "$IPv4RegName already $IPv4RegValue"
+        }
+        else {
+            # NOTE: DisabledComponents is a bitmask covering more than the IPv4
+            # preference. Writing 0x20 replaces whatever was there. The previous
+            # value is logged below so it can be put back by hand if needed.
+            New-ItemProperty -Path $IPv4RegPath -Name $IPv4RegName -PropertyType DWord -Value $IPv4RegValue -Force | Out-Null
+            Write-Log "Set $IPv4RegName = $IPv4RegValue (was '$ipv4Current') - reboot required to take effect"
+            $changes.Add("$IPv4RegName=$IPv4RegValue")
+            $rebootRequired = $true
+        }
+    }
+
     Write-Log "=== install.ps1 completed OK ==="
     if ($changes.Count -eq 0) {
         Write-Output 'GSA client settings already compliant - no changes.'
+    }
+    elseif ($rebootRequired) {
+        Write-Output ("GSA client settings applied: " + ($changes -join ', ') + ". IPv4 preference applies after the next reboot. See $logFile")
     }
     else {
         Write-Output ("GSA client settings applied: " + ($changes -join ', ') + ". See $logFile")

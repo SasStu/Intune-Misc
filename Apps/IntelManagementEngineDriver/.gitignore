@@ -1,0 +1,8 @@
+# Only the scripts and docs are versioned. The PSADT framework comes from New-ADTTemplate,
+# the MEI and LMS driver folders from Intel's download are copied to Files\ at build time.
+/*
+!/.gitignore
+!/Detection.ps1
+!/Invoke-AppDeployToolkit.ps1
+!/README.md
+!/Requirement.ps1

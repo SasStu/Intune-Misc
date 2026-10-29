@@ -1,0 +1,7 @@
+# Only the deploy script and docs are versioned. The PSADT framework comes from New-ADTTemplate,
+# the MSI and the PairingToken (secret) are added to Files\ at build time.
+/*
+!/.gitignore
+!/Invoke-AppDeployToolkit.ps1
+!/README.md
+!/Requirement.ps1
